@@ -7,8 +7,9 @@
   const NUMBERED_HEADING_SELECTOR = "p, div";
   const ASSISTANT_MESSAGE_SELECTOR = '[data-message-author-role="assistant"]';
   const MARKDOWN_FALLBACK_SELECTOR = "main .markdown";
-  const MARKER_MIN_HEIGHT = 22;
-  const MARKER_GAP = 8;
+  const LIST_ID = "gpt-paragraph-nav-list";
+  const QUEUE_MAX_VISIBLE = 30;
+  const MIN_MARKER_OPACITY = 0.28;
 
   const state = {
     headings: [],
@@ -17,7 +18,8 @@
     observer: null,
     scheduled: 0,
     scrollScheduled: 0,
-    lastDebugSignature: ""
+    lastDebugSignature: "",
+    lastRenderedHeadingCount: 0
   };
 
   function getRoot() {
@@ -30,6 +32,17 @@
       document.documentElement.appendChild(root);
     }
     return root;
+  }
+
+  function getList(root = getRoot()) {
+    let list = root.querySelector(`#${LIST_ID}`);
+    if (!list) {
+      list = document.createElement("div");
+      list.id = LIST_ID;
+      list.className = "gpt-paragraph-nav__list";
+      root.appendChild(list);
+    }
+    return list;
   }
 
   function isVisible(element) {
@@ -265,41 +278,6 @@
     };
   }
 
-  function markerTopFor(heading, metrics = state.conversationMetrics || getDocumentMetrics()) {
-    const headingTop = heading.element.getBoundingClientRect().top + window.scrollY;
-    const progress = Math.min(Math.max((headingTop - metrics.top) / Math.max(metrics.length, 1), 0), 1);
-    const railPadding = 16;
-    return railPadding + progress * (window.innerHeight - railPadding * 2);
-  }
-
-  function markerTopsFor(headings, metrics) {
-    const railPadding = 16;
-    const minTop = railPadding;
-    const maxTop = window.innerHeight - railPadding;
-    const minDistance = MARKER_MIN_HEIGHT + MARKER_GAP;
-    const items = headings.map((heading) => ({
-      heading,
-      top: markerTopFor(heading, metrics)
-    }));
-
-    items.forEach((item, index) => {
-      if (index === 0) {
-        item.top = Math.max(item.top, minTop);
-        return;
-      }
-      item.top = Math.max(item.top, items[index - 1].top + minDistance);
-    });
-
-    const overflow = items.length ? items[items.length - 1].top - maxTop : 0;
-    if (overflow > 0) {
-      items.forEach((item) => {
-        item.top = Math.max(minTop, item.top - overflow);
-      });
-    }
-
-    return new Map(items.map((item) => [item.heading.element.id, item.top]));
-  }
-
   function markerWidthFor(title) {
     const characterCount = Array.from(title).length;
     return Math.max(24, Math.ceil((characterCount / 50) * 24));
@@ -309,33 +287,42 @@
     return Array.from(title).slice(0, 16).join("");
   }
 
+  function markerOpacityFor(index, total) {
+    if (total <= 1) {
+      return 1;
+    }
+    const progress = index / Math.max(total - 1, 1);
+    return (MIN_MARKER_OPACITY + progress * (1 - MIN_MARKER_OPACITY)).toFixed(3);
+  }
+
   function activateMarker(button) {
-    const root = getRoot();
-    root.querySelectorAll(".gpt-paragraph-nav__marker").forEach((marker) => {
+    const list = getList();
+    list.querySelectorAll(".gpt-paragraph-nav__marker").forEach((marker) => {
       marker.classList.toggle("is-active", marker === button);
     });
   }
 
   function render() {
     const root = getRoot();
+    const list = getList(root);
     const containers = getAssistantContainers();
     const headings = collectHeadings();
     const metrics = getConversationMetrics(containers);
     ensureHeadingIds(headings);
-    const markerTops = markerTopsFor(headings, metrics);
     state.headings = headings;
     state.conversationMetrics = metrics;
     document.documentElement.setAttribute(DEBUG_ATTR, `loaded:${headings.length}:${Math.round(metrics.length)}`);
+    root.style.setProperty("--queue-visible-count", String(Math.min(headings.length || 1, QUEUE_MAX_VISIBLE)));
 
-    root.textContent = "";
     root.classList.toggle("is-empty", headings.length === 0);
+    list.textContent = "";
 
-    headings.forEach((heading) => {
+    headings.forEach((heading, index) => {
       const marker = document.createElement("button");
       marker.type = "button";
       marker.className = `gpt-paragraph-nav__marker level-${heading.level}`;
-      marker.style.top = `${markerTops.get(heading.element.id)}px`;
       marker.style.setProperty("--marker-width", `${markerWidthFor(heading.title)}px`);
+      marker.style.setProperty("--marker-opacity", markerOpacityFor(index, headings.length));
       marker.setAttribute("aria-label", heading.title);
       marker.dataset.headingId = heading.element.id;
 
@@ -355,27 +342,21 @@
         activateMarker(marker);
       });
 
-      root.appendChild(marker);
+      list.appendChild(marker);
     });
 
+    if (headings.length > state.lastRenderedHeadingCount) {
+      requestAnimationFrame(() => {
+        list.scrollTop = list.scrollHeight;
+      });
+    }
+    state.lastRenderedHeadingCount = headings.length;
     updateActiveMarker();
   }
 
   function scheduleRender() {
     window.clearTimeout(state.scheduled);
     state.scheduled = window.setTimeout(render, 120);
-  }
-
-  function updateMarkerPositions() {
-    const root = getRoot();
-    state.conversationMetrics = getConversationMetrics(getAssistantContainers());
-    const markerTops = markerTopsFor(state.headings, state.conversationMetrics);
-    state.headings.forEach((heading) => {
-      const marker = root.querySelector(`[data-heading-id="${CSS.escape(heading.element.id)}"]`);
-      if (marker instanceof HTMLElement) {
-        marker.style.top = `${markerTops.get(heading.element.id)}px`;
-      }
-    });
   }
 
   function updateActiveMarker() {
@@ -398,10 +379,17 @@
     }
 
     state.activeHeading = active.element;
-    const root = getRoot();
-    root.querySelectorAll(".gpt-paragraph-nav__marker").forEach((marker) => {
+    const list = getList();
+    let activeMarker = null;
+    list.querySelectorAll(".gpt-paragraph-nav__marker").forEach((marker) => {
       marker.classList.toggle("is-active", marker.dataset.headingId === active.element.id);
+      if (marker.dataset.headingId === active.element.id) {
+        activeMarker = marker;
+      }
     });
+    if (activeMarker instanceof HTMLElement) {
+      activeMarker.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
   }
 
   function scheduleScrollWork() {
@@ -410,7 +398,6 @@
     }
     state.scrollScheduled = window.requestAnimationFrame(() => {
       state.scrollScheduled = 0;
-      updateMarkerPositions();
       updateActiveMarker();
     });
   }

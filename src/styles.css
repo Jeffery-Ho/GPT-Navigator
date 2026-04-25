@@ -1,10 +1,13 @@
 #gpt-paragraph-nav {
   position: fixed;
-  top: 0;
+  top: 16px;
   right: 14px;
   z-index: 2147483647;
   width: min(180px, calc(100vw - 48px));
-  height: 100vh;
+  height: calc(100vh - 32px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
   pointer-events: none;
 }
 
@@ -12,9 +15,30 @@
   display: none;
 }
 
+.gpt-paragraph-nav__list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+  max-height: min(calc(var(--queue-visible-count, 30) * 30px), 100%);
+  overflow-y: auto;
+  padding: 0 0 4px 0;
+  pointer-events: auto;
+  scrollbar-width: thin;
+}
+
+.gpt-paragraph-nav__list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.gpt-paragraph-nav__list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(34, 34, 34, 0.18);
+}
+
 .gpt-paragraph-nav__marker {
-  position: absolute;
-  right: 0;
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -29,7 +53,7 @@
   color: #222222;
   cursor: pointer;
   pointer-events: auto;
-  transform: translateY(-50%);
+  opacity: var(--marker-opacity, 1);
   transition: background 120ms ease, color 120ms ease, transform 120ms ease;
 }
 
@@ -37,13 +61,15 @@
 .gpt-paragraph-nav__marker:focus-visible {
   background: #222222;
   color: #ffffff;
-  transform: translateY(-50%) scale(1.16);
+  opacity: 1;
+  transform: scale(1.04);
 }
 
 .gpt-paragraph-nav__marker.is-active {
   background: #f59e0b;
   color: #ffffff;
-  transform: translateY(-50%) scale(1.16);
+  opacity: 1;
+  transform: scale(1.04);
 }
 
 .gpt-paragraph-nav__marker:focus-visible {
