@@ -8,6 +8,7 @@
   const ASSISTANT_MESSAGE_SELECTOR = '[data-message-author-role="assistant"]';
   const MARKDOWN_FALLBACK_SELECTOR = "main .markdown";
   const LIST_ID = "gpt-paragraph-nav-list";
+  const TOGGLE_ID = "gpt-paragraph-nav-toggle";
   const QUEUE_MAX_VISIBLE = 30;
   const MIN_MARKER_OPACITY = 0.28;
 
@@ -19,7 +20,9 @@
     scheduled: 0,
     scrollScheduled: 0,
     lastDebugSignature: "",
-    lastRenderedHeadingCount: 0
+    lastRenderedHeadingCount: 0,
+    isCollapsed: false,
+    collapsedListHeight: 0
   };
 
   function getRoot() {
@@ -43,6 +46,25 @@
       root.appendChild(list);
     }
     return list;
+  }
+
+  function getToggleButton(root = getRoot()) {
+    let button = root.querySelector(`#${TOGGLE_ID}`);
+    if (!button) {
+      button = document.createElement("button");
+      button.id = TOGGLE_ID;
+      button.type = "button";
+      button.className = "gpt-paragraph-nav__toggle";
+      button.addEventListener("click", () => {
+        if (!state.isCollapsed) {
+          state.collapsedListHeight = getList(root).offsetHeight;
+        }
+        state.isCollapsed = !state.isCollapsed;
+        render();
+      });
+      root.prepend(button);
+    }
+    return button;
   }
 
   function isVisible(element) {
@@ -305,6 +327,7 @@
   function render() {
     const root = getRoot();
     const list = getList(root);
+    const toggle = getToggleButton(root);
     const containers = getAssistantContainers();
     const headings = collectHeadings();
     const metrics = getConversationMetrics(containers);
@@ -315,7 +338,18 @@
     root.style.setProperty("--queue-visible-count", String(Math.min(headings.length || 1, QUEUE_MAX_VISIBLE)));
 
     root.classList.toggle("is-empty", headings.length === 0);
+    root.classList.toggle("is-collapsed", state.isCollapsed && headings.length > 0);
+    toggle.hidden = headings.length === 0;
+    toggle.textContent = state.isCollapsed ? "展开全部" : "收起全部";
+    toggle.setAttribute("aria-expanded", String(!state.isCollapsed));
+    list.style.height = state.isCollapsed && state.collapsedListHeight > 0 ? `${state.collapsedListHeight}px` : "";
+    list.setAttribute("aria-hidden", String(state.isCollapsed));
     list.textContent = "";
+
+    if (state.isCollapsed) {
+      state.lastRenderedHeadingCount = headings.length;
+      return;
+    }
 
     headings.forEach((heading, index) => {
       const marker = document.createElement("button");
@@ -350,6 +384,9 @@
         list.scrollTop = list.scrollHeight;
       });
     }
+    requestAnimationFrame(() => {
+      state.collapsedListHeight = list.offsetHeight;
+    });
     state.lastRenderedHeadingCount = headings.length;
     updateActiveMarker();
   }
