@@ -7,10 +7,33 @@
   const NUMBERED_HEADING_SELECTOR = "p, div";
   const ASSISTANT_MESSAGE_SELECTOR = '[data-message-author-role="assistant"]';
   const MARKDOWN_FALLBACK_SELECTOR = "main .markdown";
+  const CONTROLS_CLASS = "gpt-paragraph-nav__controls";
+  const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
   const LIST_ID = "gpt-paragraph-nav-list";
   const TOGGLE_ID = "gpt-paragraph-nav-toggle";
+  const TOGGLE_LABEL_CLASS = "gpt-paragraph-nav__toggle-label";
+  const TOGGLE_CHEVRON_CLASS = "gpt-paragraph-nav__toggle-chevron";
   const QUEUE_MAX_VISIBLE = 30;
   const MIN_MARKER_OPACITY = 0.28;
+  const DEFAULT_HEADER_HEIGHT = 64;
+  const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
+  const CONVERSATION_HEADER_SELECTOR = [
+    '[data-testid="conversation-header"]',
+    '[data-testid="chat-header"]',
+    "main header"
+  ].join(", ");
+  const CONFIG_FIELDS = [
+    { key: "topGap", label: "顶部间距", min: 0, max: 80, step: 1, unit: "px" },
+    { key: "rightOffset", label: "右侧间距", min: 0, max: 80, step: 1, unit: "px" },
+    { key: "maxVisible", label: "最大数量", min: 1, max: 80, step: 1, unit: "" },
+    { key: "tooltipMaxWidth", label: "提示宽度", min: 160, max: 720, step: 10, unit: "px" }
+  ];
+  const DEFAULT_CONFIG = Object.freeze({
+    topGap: 8,
+    rightOffset: 14,
+    maxVisible: QUEUE_MAX_VISIBLE,
+    tooltipMaxWidth: 360
+  });
 
   const state = {
     headings: [],
@@ -22,7 +45,8 @@
     lastDebugSignature: "",
     lastRenderedHeadingCount: 0,
     isCollapsed: false,
-    collapsedListHeight: 0
+    collapsedListHeight: 0,
+    config: loadConfig()
   };
 
   function getRoot() {
@@ -35,6 +59,16 @@
       document.documentElement.appendChild(root);
     }
     return root;
+  }
+
+  function getControls(root = getRoot()) {
+    let controls = root.querySelector(`.${CONTROLS_CLASS}`);
+    if (!controls) {
+      controls = document.createElement("div");
+      controls.className = CONTROLS_CLASS;
+      root.prepend(controls);
+    }
+    return controls;
   }
 
   function getList(root = getRoot()) {
@@ -62,15 +96,174 @@
         state.isCollapsed = !state.isCollapsed;
         render();
       });
-      root.prepend(button);
     }
+
+    if (!button.querySelector(".gpt-paragraph-nav__toggle-icon")) {
+      button.textContent = "";
+
+      const icon = document.createElement("img");
+      icon.className = "gpt-paragraph-nav__toggle-icon";
+      icon.alt = "";
+      icon.width = 32;
+      icon.height = 32;
+      icon.src = chrome.runtime.getURL("icons/gpt-voyager-icon-96.png");
+      button.appendChild(icon);
+
+      const label = document.createElement("span");
+      label.className = TOGGLE_LABEL_CLASS;
+      button.appendChild(label);
+
+      const chevron = document.createElement("span");
+      chevron.className = TOGGLE_CHEVRON_CLASS;
+      chevron.setAttribute("aria-hidden", "true");
+      button.appendChild(chevron);
+    }
+    getControls(root).appendChild(button);
     return button;
+  }
+
+  function getSettings(root = getRoot()) {
+    const controls = getControls(root);
+    let settings = controls.querySelector(`.${SETTINGS_CLASS}`);
+    if (!settings) {
+      settings = document.createElement("div");
+      settings.className = SETTINGS_CLASS;
+
+      const trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "gpt-paragraph-nav__settings-trigger";
+      trigger.textContent = "设置";
+      trigger.setAttribute("aria-label", "导航设置");
+      settings.appendChild(trigger);
+
+      const menu = document.createElement("div");
+      menu.className = "gpt-paragraph-nav__settings-menu";
+      menu.setAttribute("role", "menu");
+
+      CONFIG_FIELDS.forEach((field) => {
+        const row = document.createElement("label");
+        row.className = "gpt-paragraph-nav__settings-row";
+
+        const label = document.createElement("span");
+        label.textContent = field.label;
+        row.appendChild(label);
+
+        const input = document.createElement("input");
+        input.type = "number";
+        input.min = String(field.min);
+        input.max = String(field.max);
+        input.step = String(field.step);
+        input.dataset.configKey = field.key;
+        input.addEventListener("input", () => {
+          state.config = normalizeConfig({
+            ...state.config,
+            [field.key]: input.value
+          });
+          saveConfig(state.config);
+          syncSettingsInputs(settings);
+          render();
+        });
+        row.appendChild(input);
+
+        if (field.unit) {
+          const unit = document.createElement("span");
+          unit.className = "gpt-paragraph-nav__settings-unit";
+          unit.textContent = field.unit;
+          row.appendChild(unit);
+        }
+
+        menu.appendChild(row);
+      });
+
+      const resetButton = document.createElement("button");
+      resetButton.type = "button";
+      resetButton.className = "gpt-paragraph-nav__settings-reset";
+      resetButton.textContent = "重置配置";
+      resetButton.addEventListener("click", () => {
+        state.config = { ...DEFAULT_CONFIG };
+        saveConfig(state.config);
+        syncSettingsInputs(settings);
+        render();
+      });
+      menu.appendChild(resetButton);
+
+      settings.appendChild(menu);
+      controls.prepend(settings);
+    }
+
+    syncSettingsInputs(settings);
+    return settings;
+  }
+
+  function normalizeNumber(value, fallback, min, max) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+      return fallback;
+    }
+    return Math.min(Math.max(Math.round(number), min), max);
+  }
+
+  function normalizeConfig(config) {
+    return CONFIG_FIELDS.reduce((result, field) => {
+      result[field.key] = normalizeNumber(
+        config && config[field.key],
+        DEFAULT_CONFIG[field.key],
+        field.min,
+        field.max
+      );
+      return result;
+    }, {});
+  }
+
+  function loadConfig() {
+    try {
+      return normalizeConfig(JSON.parse(window.localStorage.getItem(CONFIG_STORAGE_KEY) || "{}"));
+    } catch {
+      return { ...DEFAULT_CONFIG };
+    }
+  }
+
+  function saveConfig(config) {
+    window.localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(normalizeConfig(config)));
+  }
+
+  function syncSettingsInputs(settings) {
+    settings.querySelectorAll("input[data-config-key]").forEach((input) => {
+      const key = input.dataset.configKey;
+      if (document.activeElement !== input && key in state.config) {
+        input.value = String(state.config[key]);
+      }
+    });
+  }
+
+  function applyConfig(root) {
+    root.style.setProperty("--gpt-nav-top-gap", `${state.config.topGap}px`);
+    root.style.setProperty("--gpt-nav-right-offset", `${state.config.rightOffset}px`);
+    root.style.setProperty("--gpt-nav-width", `calc(100vw - ${state.config.rightOffset * 2}px)`);
+    root.style.setProperty("--gpt-nav-tooltip-max-width", `${state.config.tooltipMaxWidth}px`);
   }
 
   function isVisible(element) {
     const rect = element.getBoundingClientRect();
     const style = window.getComputedStyle(element);
     return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+  }
+
+  function getConversationHeaderHeight() {
+    const headers = Array.from(document.querySelectorAll(CONVERSATION_HEADER_SELECTOR))
+      .filter((header) => header instanceof HTMLElement && isVisible(header))
+      .map((header) => header.getBoundingClientRect())
+      .filter((rect) => rect.top <= 4 && rect.bottom > 0);
+
+    if (!headers.length) {
+      return DEFAULT_HEADER_HEIGHT;
+    }
+
+    return Math.round(Math.max(...headers.map((rect) => rect.height)));
+  }
+
+  function updateHeaderOffset(root) {
+    root.style.setProperty("--gpt-conversation-header-height", `${getConversationHeaderHeight()}px`);
   }
 
   function getAssistantContainers() {
@@ -326,6 +519,9 @@
 
   function render() {
     const root = getRoot();
+    applyConfig(root);
+    updateHeaderOffset(root);
+    getSettings(root);
     const list = getList(root);
     const toggle = getToggleButton(root);
     const containers = getAssistantContainers();
@@ -335,12 +531,12 @@
     state.headings = headings;
     state.conversationMetrics = metrics;
     document.documentElement.setAttribute(DEBUG_ATTR, `loaded:${headings.length}:${Math.round(metrics.length)}`);
-    root.style.setProperty("--queue-visible-count", String(Math.min(headings.length || 1, QUEUE_MAX_VISIBLE)));
+    root.style.setProperty("--queue-visible-count", String(Math.min(headings.length || 1, state.config.maxVisible)));
 
     root.classList.toggle("is-empty", headings.length === 0);
     root.classList.toggle("is-collapsed", state.isCollapsed && headings.length > 0);
     toggle.hidden = headings.length === 0;
-    toggle.textContent = state.isCollapsed ? "展开全部" : "收起全部";
+    toggle.querySelector(`.${TOGGLE_LABEL_CLASS}`).textContent = state.isCollapsed ? "展开全部" : "收起全部";
     toggle.setAttribute("aria-expanded", String(!state.isCollapsed));
     list.style.height = state.isCollapsed && state.collapsedListHeight > 0 ? `${state.collapsedListHeight}px` : "";
     list.setAttribute("aria-hidden", String(state.isCollapsed));
