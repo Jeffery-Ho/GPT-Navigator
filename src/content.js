@@ -58,6 +58,7 @@
     lastRenderedHeadingCount: 0,
     isCollapsed: false,
     collapsedListHeight: 0,
+    syncEnabled: false,
     config: { ...DEFAULT_CONFIG }
   };
 
@@ -152,6 +153,32 @@
       menu.className = "gpt-paragraph-nav__settings-menu";
       menu.setAttribute("role", "menu");
 
+      const meta = document.createElement("div");
+      meta.className = "gpt-paragraph-nav__settings-meta";
+
+      const syncStatus = document.createElement("div");
+      syncStatus.className = "gpt-paragraph-nav__settings-sync";
+      syncStatus.setAttribute("role", "status");
+      syncStatus.setAttribute("aria-live", "polite");
+
+      const syncDot = document.createElement("span");
+      syncDot.className = "gpt-paragraph-nav__settings-sync-dot";
+      syncDot.setAttribute("aria-hidden", "true");
+      syncStatus.appendChild(syncDot);
+
+      const syncText = document.createElement("span");
+      syncText.className = "gpt-paragraph-nav__settings-sync-text";
+      syncStatus.appendChild(syncText);
+
+      meta.appendChild(syncStatus);
+
+      const manifest = chrome.runtime.getManifest();
+      const versionStatus = document.createElement("div");
+      versionStatus.className = "gpt-paragraph-nav__settings-version";
+      versionStatus.textContent = manifest.version_name || `v${manifest.version}`;
+      meta.appendChild(versionStatus);
+      menu.appendChild(meta);
+
       CONFIG_FIELDS.forEach((field) => {
         const row = document.createElement("label");
         row.className = "gpt-paragraph-nav__settings-row";
@@ -203,6 +230,7 @@
       controls.prepend(settings);
     }
 
+    syncSettingsStatus(settings);
     syncSettingsInputs(settings);
     return settings;
   }
@@ -235,6 +263,25 @@
     return typeof chrome !== "undefined" && chrome.storage && chrome.storage.sync;
   }
 
+  function setSyncEnabled(isEnabled) {
+    state.syncEnabled = isEnabled;
+    const settings = document.querySelector(`#${ROOT_ID} .${SETTINGS_CLASS}`);
+    if (settings) {
+      syncSettingsStatus(settings);
+    }
+  }
+
+  function syncSettingsStatus(settings) {
+    const status = settings.querySelector(".gpt-paragraph-nav__settings-sync");
+    const text = settings.querySelector(".gpt-paragraph-nav__settings-sync-text");
+    if (!status || !text) {
+      return;
+    }
+
+    status.classList.toggle("is-enabled", state.syncEnabled);
+    text.textContent = state.syncEnabled ? "同步已启用" : "同步未启用";
+  }
+
   function loadLegacyConfig() {
     try {
       const rawConfig = window.localStorage.getItem(CONFIG_STORAGE_KEY);
@@ -246,17 +293,20 @@
 
   function readSyncConfig() {
     if (!hasSyncStorage()) {
+      setSyncEnabled(false);
       return Promise.resolve(null);
     }
 
     return new Promise((resolve) => {
       chrome.storage.sync.get(CONFIG_STORAGE_KEY, (result) => {
         if (chrome.runtime.lastError) {
+          setSyncEnabled(false);
           console.warn("[Polaris for Web] config sync read failed", chrome.runtime.lastError);
           resolve(null);
           return;
         }
 
+        setSyncEnabled(true);
         if (Object.prototype.hasOwnProperty.call(result, CONFIG_STORAGE_KEY)) {
           resolve(normalizeConfig(result[CONFIG_STORAGE_KEY]));
           return;
@@ -269,6 +319,7 @@
 
   function writeSyncConfig(config) {
     if (!hasSyncStorage()) {
+      setSyncEnabled(false);
       return Promise.resolve();
     }
 
@@ -276,7 +327,10 @@
     return new Promise((resolve) => {
       chrome.storage.sync.set({ [CONFIG_STORAGE_KEY]: nextConfig }, () => {
         if (chrome.runtime.lastError) {
+          setSyncEnabled(false);
           console.warn("[Polaris for Web] config sync write failed", chrome.runtime.lastError);
+        } else {
+          setSyncEnabled(true);
         }
         resolve();
       });

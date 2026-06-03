@@ -10,6 +10,17 @@
 - 调整：标题识别范围统一为 H1-H3，不再记录 H4。
 - 需求：让前台设置支持通过 `chrome.storage.sync` 跨设备同步。
 - 实现：新增 `storage` 权限，将配置持久化迁移到 `chrome.storage.sync`，并在同步区为空时自动迁移旧 `localStorage` 配置。
+- 需求：开始创建并记录 build 号。
+- 实现：新增 `builds.md`，使用 `1-999` 数字 build 号记录构建，并在 Manifest 中写入 `version_name`。
+- 需求：在设置菜单展示 `chrome.storage.sync` 是否已启用。
+- 实现：设置菜单顶部新增同步状态行，读写同步存储成功时显示绿点“同步已启用”，不可用或失败时显示灰点“同步未启用”。
+- 规则：每次代码或文档修改都必须新增 build；bug 修复更新版本号最后一位，功能更新更新中间一位，大更新更新第一位；版本类型由用户手动声明，每次 build 后需要确认 build 号和版本号。
+- 修复：提高设置菜单层级，避免菜单被右侧 marker 覆盖。
+- 需求：在设置菜单中展示当前插件版本和 build。
+- 实现：从 Manifest 读取 `version_name` 并在设置菜单中只读展示，用于确认当前加载版本。
+- 调整：将版本/build 小字移动到“同步已启用”右侧，间距为 `12pt`。
+- 需求：发布到 GitHub、打包 zip，并明确开源协议。
+- 实现：新增 MIT `LICENSE`，build 更新到 `7`，准备通过 GitHub Release 发布 `Polaris-for-Web-build-7.zip`。
 
 ## 2026-06-02
 
