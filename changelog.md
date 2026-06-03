@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-06-03
+
+- 需求：将扩展显示名称从 GPT-Voyager/ChatGPT Paragraph Navigator 改为 Polaris for Web。
+- 实现：更新 Manifest、README、guideline 标题和运行时 Console/aria 文案，保留内部 DOM/CSS 前缀不变。
+- 需求：支持豆包 chat 页面里的 H1-H3 标题导航标记。
+- 实现：在扩展注入范围中加入 `https://www.doubao.com/*`，并允许图标资源在豆包页面加载。
+- 实现：内容脚本按当前站点自动选择回复区域，新增豆包回复区域选择器，并保留通用 Markdown 容器兜底扫描。
+- 调整：标题识别范围统一为 H1-H3，不再记录 H4。
+- 需求：让前台设置支持通过 `chrome.storage.sync` 跨设备同步。
+- 实现：新增 `storage` 权限，将配置持久化迁移到 `chrome.storage.sync`，并在同步区为空时自动迁移旧 `localStorage` 配置。
+
 ## 2026-06-02
 
 - 需求：将“收起全部”按钮更新为插件图标、文字和右侧箭头组合。

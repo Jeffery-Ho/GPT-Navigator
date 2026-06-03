@@ -1,12 +1,24 @@
 (() => {
   const ROOT_ID = "gpt-paragraph-nav";
   const DEBUG_ATTR = "data-gpt-paragraph-nav";
-  const HEADING_SELECTOR = "h1, h2, h3, h4";
+  const HEADING_SELECTOR = "h1, h2, h3";
   const ROLE_HEADING_SELECTOR = '[role="heading"][aria-level]';
   const STRONG_HEADING_SELECTOR = "p, li";
   const NUMBERED_HEADING_SELECTOR = "p, div";
   const ASSISTANT_MESSAGE_SELECTOR = '[data-message-author-role="assistant"]';
-  const MARKDOWN_FALLBACK_SELECTOR = "main .markdown";
+  const DOUBAO_ASSISTANT_MESSAGE_SELECTOR = [
+    ".receive-message-box",
+    ".receive-message-content-block",
+    ".receive-message-content-block-merge",
+    '[class*="receive-message-box"]',
+    '[class*="receive-message-content-block"]'
+  ].join(", ");
+  const MARKDOWN_FALLBACK_SELECTOR = [
+    "main .markdown",
+    '[class*="markdown"]',
+    '[class*="md-box"]',
+    '[class*="mdbox"]'
+  ].join(", ");
   const CONTROLS_CLASS = "gpt-paragraph-nav__controls";
   const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
   const LIST_ID = "gpt-paragraph-nav-list";
@@ -46,7 +58,7 @@
     lastRenderedHeadingCount: 0,
     isCollapsed: false,
     collapsedListHeight: 0,
-    config: loadConfig()
+    config: { ...DEFAULT_CONFIG }
   };
 
   function getRoot() {
@@ -54,7 +66,7 @@
     if (!root) {
       root = document.createElement("div");
       root.id = ROOT_ID;
-      root.setAttribute("aria-label", "ChatGPT paragraph navigation");
+      root.setAttribute("aria-label", "Polaris for Web paragraph navigation");
       root.setAttribute("role", "navigation");
       document.documentElement.appendChild(root);
     }
@@ -215,16 +227,99 @@
     }, {});
   }
 
-  function loadConfig() {
+  function configsEqual(first, second) {
+    return CONFIG_FIELDS.every((field) => first[field.key] === second[field.key]);
+  }
+
+  function hasSyncStorage() {
+    return typeof chrome !== "undefined" && chrome.storage && chrome.storage.sync;
+  }
+
+  function loadLegacyConfig() {
     try {
-      return normalizeConfig(JSON.parse(window.localStorage.getItem(CONFIG_STORAGE_KEY) || "{}"));
+      const rawConfig = window.localStorage.getItem(CONFIG_STORAGE_KEY);
+      return rawConfig ? normalizeConfig(JSON.parse(rawConfig)) : null;
     } catch {
-      return { ...DEFAULT_CONFIG };
+      return null;
     }
   }
 
+  function readSyncConfig() {
+    if (!hasSyncStorage()) {
+      return Promise.resolve(null);
+    }
+
+    return new Promise((resolve) => {
+      chrome.storage.sync.get(CONFIG_STORAGE_KEY, (result) => {
+        if (chrome.runtime.lastError) {
+          console.warn("[Polaris for Web] config sync read failed", chrome.runtime.lastError);
+          resolve(null);
+          return;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(result, CONFIG_STORAGE_KEY)) {
+          resolve(normalizeConfig(result[CONFIG_STORAGE_KEY]));
+          return;
+        }
+
+        resolve(null);
+      });
+    });
+  }
+
+  function writeSyncConfig(config) {
+    if (!hasSyncStorage()) {
+      return Promise.resolve();
+    }
+
+    const nextConfig = normalizeConfig(config);
+    return new Promise((resolve) => {
+      chrome.storage.sync.set({ [CONFIG_STORAGE_KEY]: nextConfig }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn("[Polaris for Web] config sync write failed", chrome.runtime.lastError);
+        }
+        resolve();
+      });
+    });
+  }
+
+  async function loadConfig() {
+    const syncConfig = await readSyncConfig();
+    if (syncConfig) {
+      return syncConfig;
+    }
+
+    const legacyConfig = loadLegacyConfig();
+    if (legacyConfig) {
+      await writeSyncConfig(legacyConfig);
+      return legacyConfig;
+    }
+
+    return { ...DEFAULT_CONFIG };
+  }
+
   function saveConfig(config) {
-    window.localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(normalizeConfig(config)));
+    writeSyncConfig(config);
+  }
+
+  function watchConfigChanges() {
+    if (!hasSyncStorage() || !chrome.storage.onChanged) {
+      return;
+    }
+
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== "sync" || !changes[CONFIG_STORAGE_KEY]) {
+        return;
+      }
+
+      const nextConfig = normalizeConfig(changes[CONFIG_STORAGE_KEY].newValue);
+      if (configsEqual(state.config, nextConfig)) {
+        return;
+      }
+
+      state.config = nextConfig;
+      render();
+    });
   }
 
   function syncSettingsInputs(settings) {
@@ -266,16 +361,26 @@
     root.style.setProperty("--gpt-conversation-header-height", `${getConversationHeaderHeight()}px`);
   }
 
-  function getAssistantContainers() {
-    const assistantMessages = Array.from(document.querySelectorAll(ASSISTANT_MESSAGE_SELECTOR))
-      .filter((node) => node instanceof HTMLElement && isVisible(node));
+  function isDoubaoPage() {
+    return window.location.hostname === "www.doubao.com" || window.location.hostname.endsWith(".doubao.com");
+  }
 
-    if (assistantMessages.length > 0) {
-      return assistantMessages;
+  function getAssistantContainerSelectors() {
+    return isDoubaoPage()
+      ? [DOUBAO_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR]
+      : [ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+  }
+
+  function getAssistantContainers() {
+    for (const selector of getAssistantContainerSelectors()) {
+      const containers = Array.from(document.querySelectorAll(selector))
+        .filter((node) => node instanceof HTMLElement && isVisible(node));
+      if (containers.length > 0) {
+        return containers;
+      }
     }
 
-    return Array.from(document.querySelectorAll(MARKDOWN_FALLBACK_SELECTOR))
-      .filter((node) => node instanceof HTMLElement && isVisible(node));
+    return [];
   }
 
   function normalizeTitle(text) {
@@ -290,7 +395,7 @@
   }
 
   function headingLevelFor(element) {
-    if (/^H[1-4]$/.test(element.tagName)) {
+    if (/^H[1-3]$/.test(element.tagName)) {
       return Number(element.tagName.slice(1));
     }
     return clampLevel(Number(element.getAttribute("aria-level")));
@@ -306,7 +411,7 @@
   }
 
   function markdownLevelFromText(text) {
-    const match = text.match(/^(#{1,4})\s+\S/);
+    const match = text.match(/^(#{1,3})\s+\S/);
     return match ? match[1].length : null;
   }
 
@@ -435,7 +540,7 @@
     }
 
     state.lastDebugSignature = signature;
-    console.info("[GPT Paragraph Navigator] scan", {
+    console.info("[Polaris for Web] scan", {
       assistantContainers: containers.length,
       domHeadings: document.querySelectorAll(HEADING_SELECTOR).length,
       roleHeadings: document.querySelectorAll(ROLE_HEADING_SELECTOR).length,
@@ -635,8 +740,10 @@
     });
   }
 
-  function start() {
+  async function start() {
     document.documentElement.setAttribute(DEBUG_ATTR, "loaded:0");
+    state.config = await loadConfig();
+    watchConfigChanges();
     render();
 
     state.observer = new MutationObserver(scheduleRender);
@@ -648,7 +755,7 @@
 
     window.addEventListener("scroll", scheduleScrollWork, { passive: true });
     window.addEventListener("resize", scheduleRender, { passive: true });
-    console.info("[GPT Paragraph Navigator] loaded");
+    console.info("[Polaris for Web] loaded");
   }
 
   if (document.readyState === "loading") {

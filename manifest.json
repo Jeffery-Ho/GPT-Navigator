@@ -1,17 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Paragraph Navigator",
+  "name": "Polaris for Web",
   "version": "0.1.0",
-  "description": "Show H1-H4 heading markers for ChatGPT answers and jump to headings from the right edge.",
+  "description": "Show H1-H3 heading markers for ChatGPT and Doubao answers and jump to headings from the right edge.",
   "icons": {
     "16": "icons/gpt-voyager-icon-16.png",
     "32": "icons/gpt-voyager-icon-32.png",
     "48": "icons/gpt-voyager-icon-48.png",
     "128": "icons/gpt-voyager-icon-128.png"
   },
+  "permissions": [
+    "storage"
+  ],
   "host_permissions": [
     "https://chatgpt.com/*",
-    "https://chat.openai.com/*"
+    "https://chat.openai.com/*",
+    "https://www.doubao.com/*"
   ],
   "web_accessible_resources": [
     {
@@ -20,7 +24,8 @@
       ],
       "matches": [
         "https://chatgpt.com/*",
-        "https://chat.openai.com/*"
+        "https://chat.openai.com/*",
+        "https://www.doubao.com/*"
       ]
     }
   ],
@@ -28,7 +33,8 @@
     {
       "matches": [
         "https://chatgpt.com/*",
-        "https://chat.openai.com/*"
+        "https://chat.openai.com/*",
+        "https://www.doubao.com/*"
       ],
       "js": [
         "src/content.js"
