@@ -34,6 +34,7 @@
 - Use one shared config for all supported sites.
 - Keep the Manifest public `key` so unpacked installs from the same source use one extension ID across devices.
 - Do not commit any private key, token, account credential, prompt content, or chat content for sync.
+- The settings menu can provide `同步设置` to manually reload config from `chrome.storage.sync`; it must not try to run local Git or shell commands.
 - Show sync status in the settings menu: green dot with `同步已启用` after successful sync storage access, grey dot with `同步未启用` when unavailable or failed.
 - Show the loaded extension `version_name` in the settings menu as read-only version/build information.
 - Place version/build text to the right of sync status with `12pt` spacing.

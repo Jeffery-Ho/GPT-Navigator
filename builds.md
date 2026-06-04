@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 9
+
+- Date: 2026-06-04
+- Version: 0.3.0
+- Summary: Settings menu adds `同步设置` to manually reload synced config from `chrome.storage.sync`.
+- Notes: This button syncs settings only; source code updates still require Git outside the extension and then reloading the extension.
+
 ## 8
 
 - Date: 2026-06-04

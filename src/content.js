@@ -208,9 +208,26 @@
         menu.appendChild(row);
       });
 
+      const actionGroup = document.createElement("div");
+      actionGroup.className = "gpt-paragraph-nav__settings-actions";
+
+      const syncButton = document.createElement("button");
+      syncButton.type = "button";
+      syncButton.className = "gpt-paragraph-nav__settings-action";
+      syncButton.textContent = "同步设置";
+      syncButton.addEventListener("click", async () => {
+        syncButton.disabled = true;
+        const nextConfig = await loadConfig();
+        state.config = normalizeConfig(nextConfig);
+        syncSettingsInputs(settings);
+        render();
+        syncButton.disabled = false;
+      });
+      actionGroup.appendChild(syncButton);
+
       const resetButton = document.createElement("button");
       resetButton.type = "button";
-      resetButton.className = "gpt-paragraph-nav__settings-reset";
+      resetButton.className = "gpt-paragraph-nav__settings-action";
       resetButton.textContent = "重置配置";
       resetButton.addEventListener("click", () => {
         state.config = { ...DEFAULT_CONFIG };
@@ -218,7 +235,8 @@
         syncSettingsInputs(settings);
         render();
       });
-      menu.appendChild(resetButton);
+      actionGroup.appendChild(resetButton);
+      menu.appendChild(actionGroup);
 
       settings.appendChild(menu);
       controls.prepend(settings);

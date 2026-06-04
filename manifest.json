@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Polaris for Web",
-  "version": "0.2.0",
-  "version_name": "0.2.0 build 8",
+  "version": "0.3.0",
+  "version_name": "0.3.0 build 9",
   "description": "Show H1-H3 heading markers for ChatGPT and Doubao answers and jump to headings from the right edge.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqmI0zvc+ZhfBGx52DM5hzDn0D229P5XIgwYYatAf820rcL1RG3GAiO3TjUZy6mDQ7AndbXYkT1YiKsjIvp6tLP+SeAxSKSgT6K1cGLXUFbpfkyX9mFSIh+QfXmE96vweeo4sICfDa6BTwypoKyFxv+KHzwasepgjhNmS0kV10upA4/4Dotpd0kyZ3SRKSyV81FVGQztvpWQBt9zdUQL56P8fOUX4hJRFsaeh5f+VpdV1eFHCcvkbP141sY9CowKPFXumLQg3R1n/F0kNTB2DyvNCiB0Qyv+EIXg58UVt5LGhaqWgs1za/8a+DF+iSU/MktTi9tka/eAFtZC6nxRpFwIDAQAB",
   "icons": {
