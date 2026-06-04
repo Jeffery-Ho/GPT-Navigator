@@ -25,27 +25,21 @@
   const TOGGLE_ID = "gpt-paragraph-nav-toggle";
   const TOGGLE_LABEL_CLASS = "gpt-paragraph-nav__toggle-label";
   const TOGGLE_CHEVRON_CLASS = "gpt-paragraph-nav__toggle-chevron";
-  const QUEUE_MAX_VISIBLE = 30;
   const MIN_MARKER_OPACITY = 0.28;
   const DEFAULT_HEADER_HEIGHT = 64;
-  const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
+  const {
+    CONFIG_STORAGE_KEY,
+    CONFIG_FIELDS,
+    DEFAULT_CONFIG,
+    MESSAGE_TYPES,
+    normalizeConfig,
+    configsEqual
+  } = globalThis.PolarisConfig;
   const CONVERSATION_HEADER_SELECTOR = [
     '[data-testid="conversation-header"]',
     '[data-testid="chat-header"]',
     "main header"
   ].join(", ");
-  const CONFIG_FIELDS = [
-    { key: "topGap", label: "顶部间距", min: 0, max: 80, step: 1, unit: "px" },
-    { key: "rightOffset", label: "右侧间距", min: 0, max: 80, step: 1, unit: "px" },
-    { key: "maxVisible", label: "最大数量", min: 1, max: 80, step: 1, unit: "" },
-    { key: "tooltipMaxWidth", label: "提示宽度", min: 160, max: 720, step: 10, unit: "px" }
-  ];
-  const DEFAULT_CONFIG = Object.freeze({
-    topGap: 8,
-    rightOffset: 14,
-    maxVisible: QUEUE_MAX_VISIBLE,
-    tooltipMaxWidth: 360
-  });
 
   const state = {
     headings: [],
@@ -235,34 +229,6 @@
     return settings;
   }
 
-  function normalizeNumber(value, fallback, min, max) {
-    const number = Number(value);
-    if (!Number.isFinite(number)) {
-      return fallback;
-    }
-    return Math.min(Math.max(Math.round(number), min), max);
-  }
-
-  function normalizeConfig(config) {
-    return CONFIG_FIELDS.reduce((result, field) => {
-      result[field.key] = normalizeNumber(
-        config && config[field.key],
-        DEFAULT_CONFIG[field.key],
-        field.min,
-        field.max
-      );
-      return result;
-    }, {});
-  }
-
-  function configsEqual(first, second) {
-    return CONFIG_FIELDS.every((field) => first[field.key] === second[field.key]);
-  }
-
-  function hasSyncStorage() {
-    return typeof chrome !== "undefined" && chrome.storage && chrome.storage.sync;
-  }
-
   function setSyncEnabled(isEnabled) {
     state.syncEnabled = isEnabled;
     const settings = document.querySelector(`#${ROOT_ID} .${SETTINGS_CLASS}`);
@@ -291,61 +257,39 @@
     }
   }
 
-  function readSyncConfig() {
-    if (!hasSyncStorage()) {
+  function sendConfigMessage(message) {
+    if (typeof chrome === "undefined" || !chrome.runtime || !chrome.runtime.sendMessage) {
       setSyncEnabled(false);
       return Promise.resolve(null);
     }
 
     return new Promise((resolve) => {
-      chrome.storage.sync.get(CONFIG_STORAGE_KEY, (result) => {
+      chrome.runtime.sendMessage(message, (response) => {
         if (chrome.runtime.lastError) {
           setSyncEnabled(false);
-          console.warn("[Polaris for Web] config sync read failed", chrome.runtime.lastError);
+          console.warn("[Polaris for Web] config background message failed", chrome.runtime.lastError);
           resolve(null);
           return;
         }
 
-        setSyncEnabled(true);
-        if (Object.prototype.hasOwnProperty.call(result, CONFIG_STORAGE_KEY)) {
-          resolve(normalizeConfig(result[CONFIG_STORAGE_KEY]));
-          return;
-        }
-
-        resolve(null);
-      });
-    });
-  }
-
-  function writeSyncConfig(config) {
-    if (!hasSyncStorage()) {
-      setSyncEnabled(false);
-      return Promise.resolve();
-    }
-
-    const nextConfig = normalizeConfig(config);
-    return new Promise((resolve) => {
-      chrome.storage.sync.set({ [CONFIG_STORAGE_KEY]: nextConfig }, () => {
-        if (chrome.runtime.lastError) {
-          setSyncEnabled(false);
-          console.warn("[Polaris for Web] config sync write failed", chrome.runtime.lastError);
-        } else {
-          setSyncEnabled(true);
-        }
-        resolve();
+        setSyncEnabled(Boolean(response && response.syncEnabled));
+        resolve(response || null);
       });
     });
   }
 
   async function loadConfig() {
-    const syncConfig = await readSyncConfig();
-    if (syncConfig) {
-      return syncConfig;
+    const legacyConfig = loadLegacyConfig();
+    const response = await sendConfigMessage({
+      type: MESSAGE_TYPES.GET_CONFIG,
+      legacyConfig
+    });
+
+    if (response && response.config) {
+      return normalizeConfig(response.config);
     }
 
-    const legacyConfig = loadLegacyConfig();
     if (legacyConfig) {
-      await writeSyncConfig(legacyConfig);
       return legacyConfig;
     }
 
@@ -353,20 +297,25 @@
   }
 
   function saveConfig(config) {
-    writeSyncConfig(config);
+    sendConfigMessage({
+      type: MESSAGE_TYPES.SET_CONFIG,
+      config
+    });
   }
 
   function watchConfigChanges() {
-    if (!hasSyncStorage() || !chrome.storage.onChanged) {
+    if (typeof chrome === "undefined" || !chrome.runtime || !chrome.runtime.onMessage) {
+      setSyncEnabled(false);
       return;
     }
 
-    chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (areaName !== "sync" || !changes[CONFIG_STORAGE_KEY]) {
+    chrome.runtime.onMessage.addListener((message) => {
+      if (!message || message.type !== MESSAGE_TYPES.CONFIG_CHANGED) {
         return;
       }
 
-      const nextConfig = normalizeConfig(changes[CONFIG_STORAGE_KEY].newValue);
+      setSyncEnabled(Boolean(message.syncEnabled));
+      const nextConfig = normalizeConfig(message.config);
       if (configsEqual(state.config, nextConfig)) {
         return;
       }

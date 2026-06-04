@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 8
+
+- Date: 2026-06-04
+- Version: 0.2.0
+- Summary: Settings sync is rebuilt around an MV3 background service worker and a fixed Manifest public key for stable unpacked extension IDs.
+- Notes: Only the public key is committed; no private key or sensitive user data is stored in the repository.
+
 ## 7
 
 - Date: 2026-06-03

@@ -30,7 +30,10 @@
 ## Config Storage Rule
 
 - Persist front-end settings in `chrome.storage.sync` with `gpt-paragraph-nav-config`.
+- Keep sync read/write inside the MV3 background service worker; content scripts should use runtime messages for config load/save.
 - Use one shared config for all supported sites.
+- Keep the Manifest public `key` so unpacked installs from the same source use one extension ID across devices.
+- Do not commit any private key, token, account credential, prompt content, or chat content for sync.
 - Show sync status in the settings menu: green dot with `同步已启用` after successful sync storage access, grey dot with `同步未启用` when unavailable or failed.
 - Show the loaded extension `version_name` in the settings menu as read-only version/build information.
 - Place version/build text to the right of sync status with `12pt` spacing.
