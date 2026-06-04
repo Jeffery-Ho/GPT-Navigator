@@ -13,6 +13,40 @@
     '[class*="receive-message-box"]',
     '[class*="receive-message-content-block"]'
   ].join(", ");
+  const KIMI_ASSISTANT_MESSAGE_SELECTOR = [
+    ".segment.segment-assistant .markdown",
+    ".segment-assistant .markdown",
+    ".segment-assistant .markdown-container",
+    '[class*="segment-assistant"] [class*="markdown"]'
+  ].join(", ");
+  const QIANWEN_ASSISTANT_MESSAGE_SELECTOR = [
+    '[class*="message-select-wrapper-answer"] .qk-markdown',
+    ".chat-answers-card-wrap .qk-markdown",
+    ".answer-common-card .qk-markdown",
+    ".markdown-pc-special-class .qk-markdown"
+  ].join(", ");
+  const QIANWEN_VIDEO_LIST_SELECTOR = [
+    ".card_card_video",
+    '[class*="card_card_video"]',
+    '[data-tpl*="video_note_list"]'
+  ].join(", ");
+  const QIANWEN_VIDEO_TITLE_SELECTOR = '[class*="item-title"]';
+  const YUANBAO_ASSISTANT_MESSAGE_SELECTOR = [
+    '[data-conv-speaker="ai"] .hyc-common-markdown',
+    '[data-conv-speaker="ai"]',
+    ".agent-chat__list__item--ai .hyc-common-markdown"
+  ].join(", ");
+  const YUANBAO_VIDEO_CARD_SELECTOR = [
+    ".ybc-chat-videoBoxV2-bigCard",
+    ".video-box-v2_ybc-chat-videoBoxV2-bigCard",
+    '[class*="ybc-chat-videoBoxV2-bigCard"]',
+    '[class*="video-box-v2_ybc-chat-videoBoxV2-bigCard"]'
+  ].join(", ");
+  const YUANBAO_VIDEO_TITLE_SELECTORS = [
+    "h1, h2",
+    '[class*="title"], [class*="Title"]',
+    '[data-title], [title], [aria-label]'
+  ];
   const MARKDOWN_FALLBACK_SELECTOR = [
     "main .markdown",
     '[class*="markdown"]',
@@ -419,10 +453,39 @@
     return window.location.hostname === "www.doubao.com" || window.location.hostname.endsWith(".doubao.com");
   }
 
+  function isKimiPage() {
+    return window.location.hostname === "kimi.com" || window.location.hostname.endsWith(".kimi.com");
+  }
+
+  function isQianwenPage() {
+    return window.location.hostname === "qianwen.com" || window.location.hostname.endsWith(".qianwen.com");
+  }
+
+  function isYuanbaoPage() {
+    return window.location.hostname === "yb.tencent.com"
+      || window.location.hostname.endsWith(".yb.tencent.com")
+      || window.location.hostname === "yuanbao.tencent.com"
+      || window.location.hostname.endsWith(".yuanbao.tencent.com");
+  }
+
   function getAssistantContainerSelectors() {
-    return isDoubaoPage()
-      ? [DOUBAO_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR]
-      : [ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+    if (isYuanbaoPage()) {
+      return [YUANBAO_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+    }
+
+    if (isKimiPage()) {
+      return [KIMI_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+    }
+
+    if (isQianwenPage()) {
+      return [QIANWEN_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+    }
+
+    if (isDoubaoPage()) {
+      return [DOUBAO_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+    }
+
+    return [ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
   }
 
   function getAssistantContainers() {
@@ -462,6 +525,10 @@
       title: normalizeTitle(element.textContent || `Heading ${index + 1}`),
       id: element.id || `gpt-paragraph-heading-${index + 1}`
     };
+  }
+
+  function maxHeadingLevelForSite() {
+    return isYuanbaoPage() || isKimiPage() ? 2 : 3;
   }
 
   function markdownLevelFromText(text) {
@@ -530,6 +597,106 @@
     return nestedBlocks.length === 0;
   }
 
+  function titleFromAttribute(element) {
+    return normalizeTitle(element.getAttribute("data-title") || element.getAttribute("title") || element.getAttribute("aria-label") || "");
+  }
+
+  function firstLineTitle(element) {
+    return normalizeTitle((element.textContent || "").split(/\n/)[0] || "");
+  }
+
+  function isLikelyVideoTitle(element, title) {
+    if (!title || title.length > 160) {
+      return false;
+    }
+
+    if (/^(播放|暂停|更多|关闭|分享|重播)$/.test(title)) {
+      return false;
+    }
+
+    const className = String(element.className || "");
+    return !/(sub.?title|desc|time|duration|button|icon|play|cover)/i.test(className);
+  }
+
+  function titleForYuanbaoVideoCard(card) {
+    for (const selector of YUANBAO_VIDEO_TITLE_SELECTORS) {
+      const candidates = Array.from(card.querySelectorAll(selector))
+        .filter((node) => node instanceof HTMLElement && isVisible(node));
+
+      for (const candidate of candidates) {
+        const title = titleFromAttribute(candidate) || firstLineTitle(candidate);
+        if (isLikelyVideoTitle(candidate, title)) {
+          return { element: candidate, title };
+        }
+      }
+    }
+
+    const fallbackTitle = titleFromAttribute(card) || firstLineTitle(card);
+    if (fallbackTitle && fallbackTitle.length <= 160) {
+      return { element: card, title: fallbackTitle };
+    }
+
+    return null;
+  }
+
+  function collectYuanbaoVideoCardHeadings(seen, headings) {
+    if (!isYuanbaoPage()) {
+      return;
+    }
+
+    document.querySelectorAll(YUANBAO_VIDEO_CARD_SELECTOR).forEach((card) => {
+      if (!(card instanceof HTMLElement) || !isVisible(card) || seen.has(card)) {
+        return;
+      }
+
+      const title = titleForYuanbaoVideoCard(card);
+      if (!title || seen.has(title.element)) {
+        return;
+      }
+
+      seen.add(card);
+      seen.add(title.element);
+      headings.push({
+        element: title.element,
+        level: 2,
+        title: title.title,
+        id: title.element.id || `gpt-paragraph-heading-${headings.length + 1}`
+      });
+    });
+  }
+
+  function collectQianwenVideoListHeadings(seen, headings) {
+    if (!isQianwenPage()) {
+      return;
+    }
+
+    document.querySelectorAll(QIANWEN_VIDEO_LIST_SELECTOR).forEach((card) => {
+      if (!(card instanceof HTMLElement) || !isVisible(card) || seen.has(card)) {
+        return;
+      }
+
+      const titleElement = Array.from(card.querySelectorAll(QIANWEN_VIDEO_TITLE_SELECTOR))
+        .find((node) => node instanceof HTMLElement && isVisible(node) && normalizeTitle(node.textContent || ""));
+      if (!(titleElement instanceof HTMLElement) || seen.has(titleElement)) {
+        return;
+      }
+
+      const title = normalizeTitle(titleElement.textContent || "");
+      if (!title || title.length > 160) {
+        return;
+      }
+
+      seen.add(card);
+      seen.add(titleElement);
+      headings.push({
+        element: titleElement,
+        level: 2,
+        title,
+        id: titleElement.id || `gpt-paragraph-heading-${headings.length + 1}`
+      });
+    });
+  }
+
   function collectHeadings() {
     const containers = getAssistantContainers();
     const seen = new Set();
@@ -574,7 +741,11 @@
       });
     });
 
-    const usableHeadings = headings.filter((item) => item.title.length > 0 && item.level <= 3);
+    collectYuanbaoVideoCardHeadings(seen, headings);
+    collectQianwenVideoListHeadings(seen, headings);
+
+    const maxHeadingLevel = maxHeadingLevelForSite();
+    const usableHeadings = headings.filter((item) => item.title.length > 0 && item.level <= maxHeadingLevel);
     debugCollection(containers, usableHeadings);
     return usableHeadings;
   }
@@ -734,11 +905,6 @@
       list.appendChild(marker);
     });
 
-    if (headings.length > state.lastRenderedHeadingCount) {
-      requestAnimationFrame(() => {
-        list.scrollTop = list.scrollHeight;
-      });
-    }
     requestAnimationFrame(() => {
       state.collapsedListHeight = list.offsetHeight;
     });

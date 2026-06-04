@@ -6,15 +6,26 @@
 - Do not recognize, count, or render `level-4` markers.
 - `usableHeadings` must contain only heading items whose `level <= 3`.
 - Future changes to heading extraction must preserve this rule unless the user explicitly asks to change it.
+- Kimi pages must only render assistant Markdown body headings up to `H2`.
+- Kimi share page titles such as `.share-title` must not render as markers.
+- Qianwen pages may render assistant Markdown body headings up to `H3`.
+- Qianwen video lists may render one `level-2` marker using the first visible video title only.
+- Yuanbao pages must only render Markdown body headings up to `H2`.
+- Yuanbao video big-card titles may render as `level-2` markers.
 
 ## Assistant Container Rule
 
 - Detect the current chat site from `window.location.hostname`.
 - Do not add a manual UI switch for choosing the assistant container source.
 - Use site-specific assistant containers first, then fall back to generic Markdown containers.
+- On Kimi, prefer assistant containers under `.segment-assistant .markdown`.
+- On Qianwen, prefer assistant containers under `[class*="message-select-wrapper-answer"] .qk-markdown`.
+- On Yuanbao, prefer AI response containers under `data-conv-speaker="ai"` and include `hyc-common-markdown` content plus video big-card titles.
 
 ## Floating Tooltip Rule
 
+- The marker list must default to top-down display from below the page header.
+- Do not auto-scroll the marker list to the bottom during initial render or heading growth.
 - The right-side navigation container must leave enough horizontal room for marker tooltips.
 - Do not constrain the list to marker width if tooltip labels need to extend left into the page.
 - Transparent layout space must not block clicks in the ChatGPT content area.

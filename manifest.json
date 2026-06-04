@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Polaris for Web",
-  "version": "0.3.2",
-  "version_name": "0.3.2 build 11",
-  "description": "Show H1-H3 heading markers for ChatGPT and Doubao answers and jump to headings from the right edge.",
+  "version": "0.7.0",
+  "version_name": "0.7.0 build 15",
+  "description": "Show heading markers for supported AI web answers and jump to headings from the right edge.",
   "icons": {
     "16": "icons/gpt-voyager-icon-16.png",
     "32": "icons/gpt-voyager-icon-32.png",
@@ -16,7 +16,13 @@
   "host_permissions": [
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
-    "https://www.doubao.com/*"
+    "https://www.doubao.com/*",
+    "https://www.kimi.com/*",
+    "https://kimi.com/*",
+    "https://www.qianwen.com/*",
+    "https://qianwen.com/*",
+    "https://yb.tencent.com/*",
+    "https://yuanbao.tencent.com/*"
   ],
   "web_accessible_resources": [
     {
@@ -26,7 +32,13 @@
       "matches": [
         "https://chatgpt.com/*",
         "https://chat.openai.com/*",
-        "https://www.doubao.com/*"
+        "https://www.doubao.com/*",
+        "https://www.kimi.com/*",
+        "https://kimi.com/*",
+        "https://www.qianwen.com/*",
+        "https://qianwen.com/*",
+        "https://yb.tencent.com/*",
+        "https://yuanbao.tencent.com/*"
       ]
     }
   ],
@@ -35,7 +47,13 @@
       "matches": [
         "https://chatgpt.com/*",
         "https://chat.openai.com/*",
-        "https://www.doubao.com/*"
+        "https://www.doubao.com/*",
+        "https://www.kimi.com/*",
+        "https://kimi.com/*",
+        "https://www.qianwen.com/*",
+        "https://qianwen.com/*",
+        "https://yb.tencent.com/*",
+        "https://yuanbao.tencent.com/*"
       ],
       "js": [
         "src/content.js"

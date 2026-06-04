@@ -10,6 +10,34 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 15
+
+- Date: 2026-06-04
+- Version: 0.7.0
+- Summary: Marker lists now default to top-down display from below the page header.
+- Notes: Removes automatic bottom scroll when headings are added.
+
+## 14
+
+- Date: 2026-06-04
+- Version: 0.6.0
+- Summary: Qianwen pages are supported with assistant body H1-H3 markers and first-video title markers.
+- Notes: Adds `www.qianwen.com` and `qianwen.com` extension matches.
+
+## 13
+
+- Date: 2026-06-04
+- Version: 0.5.0
+- Summary: Kimi pages are supported with assistant body H1-H2 markers.
+- Notes: Adds `www.kimi.com` and `kimi.com` extension matches while excluding Kimi share page titles from markers.
+
+## 12
+
+- Date: 2026-06-04
+- Version: 0.4.0
+- Summary: Yuanbao pages are supported with H1-H2 body markers and video big-card title markers.
+- Notes: Adds `yb.tencent.com` and `yuanbao.tencent.com` extension matches.
+
 ## 11
 
 - Date: 2026-06-04

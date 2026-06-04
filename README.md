@@ -1,6 +1,6 @@
 # Polaris for Web
 
-一个用于 ChatGPT 、豆包、kimi、小红书点点网页版的段落导航扩展。它会识别 assistant 回复里的 `H1` 到 `H3` 标题，在页面右侧显示段落点；鼠标移入显示标题文字，点击后滚动到对应标题位置。
+一个用于 ChatGPT 、豆包、元宝、千问、kimi、小红书点点网页版的段落导航扩展。它会识别 assistant 回复里的标题，在页面右侧显示段落点；鼠标移入显示标题文字，点击后滚动到对应标题位置。
 
 ## 安装
 
@@ -12,8 +12,11 @@
 
 ## 行为
 
-- 仅在 `chatgpt.com`、`chat.openai.com` 和 `www.doubao.com` 注入。
-- 只识别 ChatGPT 和豆包回复区域内的 `h1`、`h2`、`h3`。
+- 仅在 `chatgpt.com`、`chat.openai.com`、`www.doubao.com`、`www.kimi.com`、`kimi.com`、`www.qianwen.com`、`qianwen.com`、`yb.tencent.com` 和 `yuanbao.tencent.com` 注入。
+- 识别 ChatGPT 和豆包回复区域内的 `h1`、`h2`、`h3`。
+- 识别 Kimi 回复区域内的 `h1`、`h2`，不把分享页顶部标题作为导航点。
+- 识别千问回复区域内的 `h1`、`h2`、`h3`，并支持千问视频列表的首个视频标题作为导航点。
+- 识别元宝回复区域内的 `h1`、`h2`，并支持元宝视频大卡标题作为导航点。
 - 读取主体按当前站点自动适配，不需要手动切换 ChatGPT 或豆包。
 - 页面内容变化时会自动重新扫描，适配流式输出的新标题。
 - 右侧段落点按标题在整页中的位置分布，当前阅读位置会高亮。

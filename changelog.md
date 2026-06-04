@@ -2,6 +2,18 @@
 
 ## 2026-06-04
 
+- 需求：将右侧 marker 列表默认位置改为从页面 header 下方开始向下展示。
+- 实现：浮层改为顶部对齐，列表高度预留顶部 controls 区域，并移除新增标题后自动滚到底部的逻辑。
+- 版本：功能更新到 `0.7.0 build 15`。
+- 需求：开始支持千问页面 assistant 正文的 H1-H3 标题导航，并支持千问视频列表首个视频标题 marker。
+- 实现：Manifest 增加 `www.qianwen.com` 和 `qianwen.com` 注入范围，内容脚本新增千问 assistant Markdown 容器识别和视频列表首标题收集逻辑。
+- 版本：功能更新到 `0.6.0 build 14`。
+- 需求：开始支持 Kimi 页面 assistant 正文的 H1-H2 标题导航。
+- 实现：Manifest 增加 `www.kimi.com` 和 `kimi.com` 注入范围，内容脚本新增 Kimi assistant Markdown 容器识别，并限制 Kimi 只渲染正文 H1-H2 marker。
+- 版本：功能更新到 `0.5.0 build 13`。
+- 需求：开始支持元宝页面的 H1-H2 标题导航，并支持元宝视频大卡标题 marker。
+- 实现：Manifest 增加 `yb.tencent.com` 和 `yuanbao.tencent.com` 注入范围，内容脚本新增元宝 AI 容器、H1-H2 层级限制和视频卡标题收集逻辑。
+- 版本：功能更新到 `0.4.0 build 12`。
 - 修复：设置菜单增加透明 hover 判定区域，鼠标从“设置”按钮移向左侧空白区域或下方菜单时不再立刻关闭。
 - 版本：修复更新到 `0.3.2 build 11`。
 
