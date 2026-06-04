@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 10
+
+- Date: 2026-06-04
+- Version: 0.3.1
+- Summary: Settings action buttons are restyled with visible dark text and borders on the light settings menu.
+- Notes: Fixes `同步设置` and `重置配置` appearing too faint to notice.
+
 ## 9
 
 - Date: 2026-06-04

@@ -220,18 +220,18 @@
 .gpt-paragraph-nav__settings-action {
   width: 100%;
   min-height: 28px;
-  border: 0;
+  border: 1px solid rgba(15, 23, 42, 0.18);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
   cursor: pointer;
   font: 600 12px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .gpt-paragraph-nav__settings-action:hover,
 .gpt-paragraph-nav__settings-action:focus-visible {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: rgba(15, 23, 42, 0.14);
+  color: #020617;
 }
 
 .gpt-paragraph-nav__settings-action:disabled {
