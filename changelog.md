@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-06-05
+
+- 调整：点击底部悬浮 active marker 时保留平滑滚动效果，同时继续先触发正文定位，避免影响一键到位。
+- 版本：修复更新到 `0.7.5 build 20`。
+- 修复：点击底部悬浮 active marker 时先即时定位正文锚点，再滚回右侧选中 marker，避免需要多次点击才到位。
+- 版本：修复更新到 `0.7.4 build 19`。
+- 修复：点击底部悬浮 active marker 时，右侧列表滚回选中 marker，并同步把正文页面锚点定位到对应 heading。
+- 版本：修复更新到 `0.7.3 build 18`。
+- 修复：点击 marker 后 active 蓝色高亮不再因为焦点变化被清除，选中 marker 离开屏幕时固定到可视列表底部上方 20pt。
+- 版本：修复更新到 `0.7.2 build 17`。
+- 修复：滚动 marker 列表后，点击过的 marker 不再和当前 active marker 同时显示高亮。
+- 实现：active 状态改为由点击的 marker 持久驱动，并使用内部唯一 marker key 匹配，避免重复 DOM id 造成多个 marker 同时高亮；active marker 完全离开屏幕可视区时才在可视 marker 列表底部上方 20pt 显示可点击的悬浮副本。
+- 版本：修复更新到 `0.7.1 build 16`。
+
 ## 2026-06-04
 
 - 需求：将右侧 marker 列表默认位置改为从页面 header 下方开始向下展示。

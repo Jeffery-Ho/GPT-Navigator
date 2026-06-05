@@ -30,6 +30,12 @@
 - Do not constrain the list to marker width if tooltip labels need to extend left into the page.
 - Transparent layout space must not block clicks in the ChatGPT content area.
 - Keep marker hover in a pale blue tone, and marker selected state in a stronger blue, not orange.
+- Only the clicked active marker may use the selected blue state.
+- Active marker matching must use an internal marker key, not the heading DOM id.
+- Marker focus must not add a separate visual highlight.
+- If the active marker is fully outside the browser viewport, show one clickable floating active marker 20pt above the bottom of the visible marker list.
+- Clicking the floating active marker must return the marker list to the selected marker and jump the page anchor to the selected heading.
+- Floating active marker clicks must start page anchor scrolling before scrolling or focusing the marker list.
 - Keep the settings menu layered above heading markers.
 - The settings menu may use a limited transparent hover guard while open; it must not intercept page clicks when the menu is closed.
 

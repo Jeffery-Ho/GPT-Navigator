@@ -59,6 +59,7 @@
   const TOGGLE_ID = "gpt-paragraph-nav-toggle";
   const TOGGLE_LABEL_CLASS = "gpt-paragraph-nav__toggle-label";
   const TOGGLE_CHEVRON_CLASS = "gpt-paragraph-nav__toggle-chevron";
+  const FLOATING_ACTIVE_CLASS = "gpt-paragraph-nav__floating-active";
   const QUEUE_MAX_VISIBLE = 30;
   const MIN_MARKER_OPACITY = 0.28;
   const DEFAULT_HEADER_HEIGHT = 64;
@@ -80,14 +81,18 @@
     maxVisible: QUEUE_MAX_VISIBLE,
     tooltipMaxWidth: 360
   });
+  const markerKeys = new WeakMap();
+  let nextMarkerKey = 1;
 
   const state = {
     headings: [],
     conversationMetrics: null,
     activeHeading: null,
+    activeMarkerKey: "",
     observer: null,
     scheduled: 0,
     scrollScheduled: 0,
+    floatingScheduled: 0,
     lastDebugSignature: "",
     lastRenderedHeadingCount: 0,
     isCollapsed: false,
@@ -124,9 +129,39 @@
       list = document.createElement("div");
       list.id = LIST_ID;
       list.className = "gpt-paragraph-nav__list";
+      list.addEventListener("scroll", scheduleFloatingActiveUpdate, { passive: true });
       root.appendChild(list);
     }
     return list;
+  }
+
+  function getFloatingActive(root = getRoot()) {
+    let floating = root.querySelector(`.${FLOATING_ACTIVE_CLASS}`);
+    if (!(floating instanceof HTMLButtonElement)) {
+      if (floating) {
+        floating.remove();
+      }
+      floating = document.createElement("button");
+      floating.type = "button";
+      floating.className = FLOATING_ACTIVE_CLASS;
+      floating.hidden = true;
+      floating.tabIndex = -1;
+      floating.setAttribute("aria-hidden", "true");
+      floating.addEventListener("click", () => {
+        const marker = getActiveMarker();
+        const heading = getActiveHeading();
+        if (heading) {
+          jumpToHeading(heading, "smooth");
+        }
+        if (marker) {
+          scrollMarkerIntoListView(marker);
+          marker.focus({ preventScroll: true });
+          updateFloatingActiveMarker(marker);
+        }
+      });
+      root.appendChild(floating);
+    }
+    return floating;
   }
 
   function getToggleButton(root = getRoot()) {
@@ -840,11 +875,33 @@
     return (MIN_MARKER_OPACITY + progress * (1 - MIN_MARKER_OPACITY)).toFixed(3);
   }
 
-  function activateMarker(button) {
+  function markerKeyFor(element) {
+    let key = markerKeys.get(element);
+    if (!key) {
+      key = `marker-${nextMarkerKey}`;
+      nextMarkerKey += 1;
+      markerKeys.set(element, key);
+    }
+    return key;
+  }
+
+  function jumpToHeading(heading, behavior = "smooth") {
+    heading.element.scrollIntoView({ behavior, block: "start" });
+    window.history.replaceState(null, "", `#${encodeURIComponent(heading.element.id)}`);
+  }
+
+  function scrollMarkerIntoListView(marker) {
     const list = getList();
-    list.querySelectorAll(".gpt-paragraph-nav__marker").forEach((marker) => {
-      marker.classList.toggle("is-active", marker === button);
-    });
+    const markerRect = marker.getBoundingClientRect();
+    const listRect = list.getBoundingClientRect();
+    const topOverflow = listRect.top - markerRect.top;
+    const bottomOverflow = markerRect.bottom - listRect.bottom;
+
+    if (topOverflow > 0) {
+      list.scrollTop -= topOverflow + 8;
+    } else if (bottomOverflow > 0) {
+      list.scrollTop += bottomOverflow + 8;
+    }
   }
 
   function render() {
@@ -873,18 +930,20 @@
     list.textContent = "";
 
     if (state.isCollapsed) {
+      updateFloatingActiveMarker(null);
       state.lastRenderedHeadingCount = headings.length;
       return;
     }
 
     headings.forEach((heading, index) => {
+      const markerKey = markerKeyFor(heading.element);
       const marker = document.createElement("button");
       marker.type = "button";
       marker.className = `gpt-paragraph-nav__marker level-${heading.level}`;
       marker.style.setProperty("--marker-width", `${markerWidthFor(heading.title)}px`);
       marker.style.setProperty("--marker-opacity", markerOpacityFor(index, headings.length));
       marker.setAttribute("aria-label", heading.title);
-      marker.dataset.headingId = heading.element.id;
+      marker.dataset.markerKey = markerKey;
 
       const preview = document.createElement("span");
       preview.className = "gpt-paragraph-nav__preview";
@@ -897,9 +956,10 @@
       marker.appendChild(label);
 
       marker.addEventListener("click", () => {
-        heading.element.scrollIntoView({ behavior: "smooth", block: "start" });
-        window.history.replaceState(null, "", `#${encodeURIComponent(heading.element.id)}`);
-        activateMarker(marker);
+        state.activeMarkerKey = markerKey;
+        syncActiveMarker(state.activeMarkerKey);
+        jumpToHeading(heading);
+        updateFloatingActiveMarker();
       });
 
       list.appendChild(marker);
@@ -917,37 +977,96 @@
     state.scheduled = window.setTimeout(render, 120);
   }
 
-  function updateActiveMarker() {
-    if (!state.headings.length) {
-      return;
+  function getActiveMarker() {
+    const list = getList();
+    if (!state.activeMarkerKey) {
+      return null;
     }
+    const activeMarker = list.querySelector(`[data-marker-key="${CSS.escape(state.activeMarkerKey)}"]`);
+    return activeMarker instanceof HTMLElement ? activeMarker : null;
+  }
 
-    const offset = 96;
-    let active = state.headings[0];
-    for (const heading of state.headings) {
-      if (heading.element.getBoundingClientRect().top <= offset) {
-        active = heading;
-      } else {
-        break;
-      }
+  function getActiveHeading() {
+    if (!state.activeMarkerKey) {
+      return null;
     }
+    return state.headings.find((heading) => markerKeyFor(heading.element) === state.activeMarkerKey) || null;
+  }
 
-    if (state.activeHeading === active.element) {
-      return;
-    }
+  function clearActiveMarker() {
+    state.activeHeading = null;
+    state.activeMarkerKey = "";
+    updateFloatingActiveMarker(syncActiveMarker(""));
+  }
 
-    state.activeHeading = active.element;
+  function syncActiveMarker(activeMarkerKey = state.activeMarkerKey) {
     const list = getList();
     let activeMarker = null;
+    let hasMarkedActive = false;
     list.querySelectorAll(".gpt-paragraph-nav__marker").forEach((marker) => {
-      marker.classList.toggle("is-active", marker.dataset.headingId === active.element.id);
-      if (marker.dataset.headingId === active.element.id) {
+      const isActive = Boolean(activeMarkerKey && !hasMarkedActive && marker.dataset.markerKey === activeMarkerKey);
+      marker.classList.toggle("is-active", isActive);
+      if (isActive) {
         activeMarker = marker;
+        hasMarkedActive = true;
       }
     });
-    if (activeMarker instanceof HTMLElement) {
-      activeMarker.scrollIntoView({ block: "nearest", inline: "nearest" });
+    return activeMarker;
+  }
+
+  function isMarkerVisibleInViewport(marker) {
+    const rect = marker.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth;
+  }
+
+  function updateFloatingActiveMarker(activeMarker = syncActiveMarker(state.activeMarkerKey)) {
+    const root = getRoot();
+    const floating = getFloatingActive(root);
+    if (!(activeMarker instanceof HTMLElement) || state.isCollapsed) {
+      floating.hidden = true;
+      floating.textContent = "";
+      return;
     }
+
+    const list = getList(root);
+    if (isMarkerVisibleInViewport(activeMarker)) {
+      floating.hidden = true;
+      floating.textContent = "";
+      return;
+    }
+
+    const rootRect = root.getBoundingClientRect();
+    const listRect = list.getBoundingClientRect();
+    const preview = activeMarker.querySelector(".gpt-paragraph-nav__preview");
+    floating.textContent = preview ? preview.textContent : activeMarker.getAttribute("aria-label") || "";
+    floating.style.setProperty("--marker-width", activeMarker.style.getPropertyValue("--marker-width") || "24px");
+    floating.style.setProperty("--floating-active-bottom", `calc(${Math.max(0, rootRect.bottom - listRect.bottom)}px + 20pt)`);
+    floating.hidden = false;
+  }
+
+  function updateActiveMarker() {
+    if (!state.headings.length || !state.activeMarkerKey) {
+      clearActiveMarker();
+      return;
+    }
+
+    const active = getActiveHeading();
+    if (!active) {
+      clearActiveMarker();
+      return;
+    }
+    state.activeHeading = active ? active.element : null;
+    updateFloatingActiveMarker(syncActiveMarker(markerKeyFor(active.element)));
+  }
+
+  function scheduleFloatingActiveUpdate() {
+    if (state.floatingScheduled) {
+      return;
+    }
+    state.floatingScheduled = window.requestAnimationFrame(() => {
+      state.floatingScheduled = 0;
+      updateFloatingActiveMarker();
+    });
   }
 
   function scheduleScrollWork() {

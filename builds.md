@@ -10,6 +10,41 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 20
+
+- Date: 2026-06-05
+- Version: 0.7.5
+- Summary: Floating active marker clicks now keep a smooth page scroll effect.
+- Notes: Preserves one-click behavior by starting page scrolling before marker-list scrolling and focus updates.
+
+## 19
+
+- Date: 2026-06-05
+- Version: 0.7.4
+- Summary: Floating active marker clicks now jump the page anchor immediately with one click.
+- Notes: Runs the page anchor jump before marker-list scrolling and keeps focus from scrolling the page again.
+
+## 18
+
+- Date: 2026-06-05
+- Version: 0.7.3
+- Summary: Floating active marker now returns both the marker list and the page anchor to the selected heading.
+- Notes: Keeps the selected marker active while off-screen and preserves the floating marker 20pt above the visible marker list bottom.
+
+## 17
+
+- Date: 2026-06-05
+- Version: 0.7.2
+- Summary: Active marker selection now persists after click and uses the floating marker only when the selected marker leaves the screen.
+- Notes: Positions the floating active marker 20pt above the visible marker list bottom.
+
+## 16
+
+- Date: 2026-06-05
+- Version: 0.7.1
+- Summary: Clicked marker highlighting now stays unique and persists while the marker list is scrolled.
+- Notes: Uses internal marker keys for active matching and shows a clickable bottom floating active marker 20pt above the visible list bottom only when the active item is fully outside the browser viewport.
+
 ## 15
 
 - Date: 2026-06-04
