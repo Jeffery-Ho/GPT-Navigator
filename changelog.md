@@ -2,6 +2,8 @@
 
 ## 2026-06-07
 
+- 文档：README 改为 GitHub 展示用的最简版本，补充按平台 Marker 类型过滤、liquid glass 和滚轮命中区优化。
+- 版本：文档更新到 `0.10.2 build 38`。
 - 调整：设置菜单控件参考 Arco Design 风格，统一 input、checkbox、重置按钮、间距和文字层级。
 - 实现：新增 Arco-like 颜色变量，保留 liquid glass 外层菜单，同时让表单控件使用浅灰背景、浅边框、蓝色选中态和轻量 hover。
 - 版本：修复更新到 `0.10.1 build 37`。

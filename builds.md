@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 38
+
+- Date: 2026-06-07
+- Version: 0.10.2
+- Summary: README now highlights the latest marker filtering and liquid glass features.
+- Notes: Rewrites README into a concise GitHub-facing overview and updates the displayed version.
+
 ## 37
 
 - Date: 2026-06-07
