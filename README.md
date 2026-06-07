@@ -10,8 +10,6 @@
 - 右侧 marker 支持点击跳转、当前选中高亮、滚动列表。
 - 设置中可按当前平台过滤 Marker 类型：H1 / H2 / H3。
 - 设置会通过 `chrome.storage.sync` 同步。
-- marker、按钮、设置菜单使用 liquid glass 视觉。
-- marker 列表支持更宽的滚轮命中区域，滚动更容易。
 
 ## 安装
 
