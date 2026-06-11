@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 48
+
+- Date: 2026-06-11
+- Version: 0.13.4
+- Summary: Marker tooltip text now wraps within the configured width.
+- Notes: Replaces single-line ellipsis clipping with normal wrapping and long-word breaking while keeping the existing tooltip maximum width setting.
+
 ## 47
 
 - Date: 2026-06-08
